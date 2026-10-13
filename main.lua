@@ -19,35 +19,13 @@ import "android.os.Bundle"
 import "android.view.accessibility.AccessibilityNodeInfo"
 import "java.io.*"
 
--- Auto Update Configuration
-local CURRENT_VERSION = "1.0"
-local VERSION_URL = "https://raw.githubusercontent.com/hafizmuddassir96-wq/AdvanceTyper/main/werjan.txt"
-local UPDATE_CODE_URL = "https://raw.githubusercontent.com/hafizmuddassir96-wq/AdvanceTyper/main/main.lua"
+-- Auto Update Configuration (صابر جمیل کے فیچر کے مطابق)
+local CURRENT_VERSION = "1.2"
+local VERSION_URL = "GITHUB_VERSION_TXT_RAW_LINK_HERE"
+local UPDATE_CODE_URL = "GITHUB_MAIN_LUA_RAW_LINK_HERE"
 local PLUGIN_PATH = "/storage/emulated/0/解说/Plugins/Advance Typer/main.lua"
 local updateInProgress = false
 local mainHandler = Handler(Looper.getMainLooper())
-
-local active_dialogs = {}
-
-local function registerDialog(dlg)
-  table.insert(active_dialogs, dlg)
-end
-
-local function unregisterDialog(dlg)
-  for i, d in ipairs(active_dialogs) do
-    if d == dlg then
-      table.remove(active_dialogs, i)
-      break
-    end
-  end
-end
-
-local function dismissAllDialogs()
-  for _, d in ipairs(active_dialogs) do
-    pcall(function() d.dismiss() end)
-  end
-  active_dialogs = {}
-end
 
 local function trim(s)
     if s == nil then return "" end
@@ -195,6 +173,28 @@ end
 local AI_PREFS = "UniqueTyperAI_Saifi"
 local aiPrefs = service.getSharedPreferences(AI_PREFS, Context.MODE_PRIVATE)
 local aiEditor = aiPrefs.edit()
+
+local active_dialogs = {}
+
+local function registerDialog(dlg)
+  table.insert(active_dialogs, dlg)
+end
+
+local function unregisterDialog(dlg)
+  for i, d in ipairs(active_dialogs) do
+    if d == dlg then
+      table.remove(active_dialogs, i)
+      break
+    end
+  end
+end
+
+local function dismissAllDialogs()
+  for _, d in ipairs(active_dialogs) do
+    pcall(function() d.dismiss() end)
+  end
+  active_dialogs = {}
+end
 
 local function escapePattern(str)
   return str:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
@@ -1121,7 +1121,7 @@ local function showDictionarySettings()
   correctInput.setHint("Correct Word")
   layout.addView(correctInput)
   
-  local addBtn =Button(service)
+  local addBtn = Button(service)
   addBtn.setText("Add to Dictionary")
   addBtn.setOnClickListener(function()
     local w = wrongInput.getText().toString()
@@ -1524,8 +1524,7 @@ local function chooseLanguage()
   
   container.addView(list, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0))
   
-  linkMainMenuBtn = Button(service)
-  mainMenuBtn = Button(service)
+  local mainMenuBtn = Button(service)
   mainMenuBtn.setText("Go to Main Menu")
   mainMenuBtn.setOnClickListener(function()
     unregisterDialog(dlg)
