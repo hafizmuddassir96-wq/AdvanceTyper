@@ -20,7 +20,7 @@ import "android.view.accessibility.AccessibilityNodeInfo"
 import "java.io.*"
 
 -- Auto Update Configuration (صابر جمیل کے فیچر کے مطابق)
-local CURRENT_VERSION = "1.0"
+local CURRENT_VERSION = "1.1"
 local VERSION_URL = "GITHUB_VERSION_TXT_RAW_LINK_HERE"
 local UPDATE_CODE_URL = "GITHUB_MAIN_LUA_RAW_LINK_HERE"
 local PLUGIN_PATH = "/storage/emulated/0/解说/Plugins/Advance Typer/main.lua"
