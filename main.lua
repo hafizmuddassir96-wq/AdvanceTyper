@@ -20,7 +20,7 @@ import "android.view.accessibility.AccessibilityNodeInfo"
 import "java.io.*"
 
 -- Auto Update Configuration
-local CURRENT_VERSION = "1.1"
+local CURRENT_VERSION = "1.2"
 local VERSION_URL = "https://raw.githubusercontent.com/hafizmuddassir96-wq/AdvanceTyper/main/werjan.txt"
 local UPDATE_CODE_URL = "https://raw.githubusercontent.com/hafizmuddassir96-wq/AdvanceTyper/main/main.lua"
 local PLUGIN_PATH = "/storage/emulated/0/解说/Plugins/Advance Typer/main.lua"
