@@ -17,6 +17,158 @@ import "android.net.Uri"
 import "android.text.TextWatcher"
 import "android.os.Bundle"
 import "android.view.accessibility.AccessibilityNodeInfo"
+import "java.io.*"
+
+-- Auto Update Configuration (صابر جمیل کے فیچر کے مطابق)
+local CURRENT_VERSION = "1.0"
+local VERSION_URL = "GITHUB_VERSION_TXT_RAW_LINK_HERE"
+local UPDATE_CODE_URL = "GITHUB_MAIN_LUA_RAW_LINK_HERE"
+local PLUGIN_PATH = "/storage/emulated/0/解说/Plugins/Advance Typer/main.lua"
+local updateInProgress = false
+local mainHandler = Handler(Looper.getMainLooper())
+
+local function trim(s)
+    if s == nil then return "" end
+    return tostring(s):gsub("^%s*(.-)%s*$", "%1")
+end
+
+local function showUpdateErrorDialog(title, message)
+    mainHandler.post(Runnable({
+        run = function()
+            local errorDialog = LuaDialog()
+            errorDialog.setTitle(title)
+            errorDialog.setMessage(message)
+            errorDialog.setPositiveButton("OK", function()
+                errorDialog.dismiss()
+            end)
+            errorDialog.show()
+        end
+    }))
+end
+
+local function performUpdate(mainCode, onlineVersion)
+    if not mainCode or trim(mainCode) == "" then
+        showUpdateErrorDialog("Update Failed", "Main plugin code is empty.")
+        return
+    end
+    
+    updateInProgress = true
+    
+    local function updateProcess()
+        local success = false
+        local tempPath = PLUGIN_PATH .. ".temp_update"
+        local f = io.open(tempPath, "w")
+        if f then
+            f:write(mainCode)
+            f:close()
+            
+            local fileExists = io.open(PLUGIN_PATH, "r")
+            if fileExists then
+                fileExists:close()
+                local delSuccess = pcall(function()
+                    os.remove(PLUGIN_PATH)
+                end)
+                if delSuccess then
+                    local renameSuccess = pcall(function()
+                        os.rename(tempPath, PLUGIN_PATH)
+                    end)
+                    if renameSuccess then
+                        success = true
+                    end
+                end
+            else
+                local renameSuccess = pcall(function()
+                    os.rename(tempPath, PLUGIN_PATH)
+                end)
+                if renameSuccess then
+                    success = true
+                end
+            end
+            
+            if not success then
+                pcall(function() os.remove(tempPath) end)
+            end
+        end
+        
+        if success then
+            updateInProgress = false
+            mainHandler.post(Runnable({
+                run = function()
+                    local successDialog = LuaDialog()
+                    successDialog.setTitle("Update Successful")
+                    successDialog.setMessage("Plugin successfully updated to version " .. onlineVersion .. ".\n\nPlugin will restart automatically.")
+                    successDialog.setPositiveButton("OK", function()
+                        successDialog.dismiss()
+                        dismissAllDialogs()
+                        mainHandler.postDelayed(Runnable({
+                            run = function()
+                                local pluginFile = io.open(PLUGIN_PATH, "r")
+                                if pluginFile then
+                                    pluginFile:close()
+                                    local func, err = loadfile(PLUGIN_PATH)
+                                    if func then
+                                        pcall(func)
+                                    else
+                                        Toast.makeText(service, "Error reloading plugin: " .. tostring(err), Toast.LENGTH_SHORT).show()
+                                    end
+                                end
+                            end
+                        }), 2000)
+                    end)
+                    successDialog.show()
+                end
+            }))
+            return
+        else
+            updateInProgress = false
+            showUpdateErrorDialog("Update Failed", "Update failed. Please try again.")
+        end
+    end
+    
+    local updateThread = Thread(luajava.bindClass("java.lang.Runnable"){
+        run = updateProcess
+    })
+    updateThread.start()
+end
+
+local function checkUpdate()
+    if updateInProgress then
+        showUpdateErrorDialog("Update In Progress", "An update is already in progress. Please wait.")
+        return
+    end
+    
+    local timestamp = tostring(os.time())
+    Http.get(VERSION_URL .. "?t=" .. timestamp, function(code, response)
+        if code == 200 and response then
+            local onlineVersion = trim(response)
+            if onlineVersion ~= CURRENT_VERSION then
+                Http.get(UPDATE_CODE_URL .. "?t=" .. timestamp, function(code2, mainCode)
+                    if code2 == 200 and mainCode and trim(mainCode) ~= "" then
+                        mainHandler.post(Runnable({
+                            run = function()
+                                local updateAlertDlg = LuaDialog()
+                                updateAlertDlg.setTitle("Update Available!")
+                                updateAlertDlg.setMessage("A new version (" .. onlineVersion .. ") is available.\nCurrent version: " .. CURRENT_VERSION .. "\n\nWould you like to update now?")
+                                updateAlertDlg.setPositiveButton("Update Now", function()
+                                    updateAlertDlg.dismiss()
+                                    performUpdate(mainCode, onlineVersion)
+                                end)
+                                updateAlertDlg.setNegativeButton("Later", function()
+                                    updateAlertDlg.dismiss()
+                                end)
+                                updateAlertDlg.show()
+                            end
+                        }))
+                    end
+                end)
+            else
+                Toast.makeText(service, "You are using the latest version (" .. CURRENT_VERSION .. ").", Toast.LENGTH_SHORT).show()
+            end
+        else
+            Toast.makeText(service, "Could not check for updates. Check internet connection.", Toast.LENGTH_SHORT).show()
+        end
+    end)
+end
 
 local AI_PREFS = "UniqueTyperAI_Saifi"
 local aiPrefs = service.getSharedPreferences(AI_PREFS, Context.MODE_PRIVATE)
@@ -562,7 +714,6 @@ showSettingsDialog = function()
     onNothingSelected = function() end
   })
 
-  -- Typing Mode (ٹائپنگ موڈ اور ڈسکرپشنز بشمول کوڈنگ موڈ)
   local styleLabel = TextView(service)
   styleLabel.setText("Typing Mode (ٹائپنگ موڈ)")
   styleLabel.setTextSize(16)
@@ -1013,6 +1164,7 @@ showMyDialog = function()
     { Button; text = "Dictionary"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showDictionarySettings() end; };
     { Button; text = "View Dictionary"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showViewDictionaryDialog() end; };
     { Button; text = "Settings"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showSettingsDialog() end; };
+    { Button; text = "Check for Updates"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() checkUpdate() end; };
     { Button; text = "Send Feedback to Developer"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function()
         local intent = Intent(Intent.ACTION_VIEW)
         intent.setData(Uri.parse("https://wa.me/923044552704"))
