@@ -19,7 +19,6 @@ import "android.os.Bundle"
 import "android.view.accessibility.AccessibilityNodeInfo"
 import "java.io.*"
 
--- Auto Update Configuration
 local CURRENT_VERSION = "1.3"
 local VERSION_URL = "https://raw.githubusercontent.com/hafizmuddassir96-wq/AdvanceTyper/main/werjan.txt"
 local UPDATE_CODE_URL = "https://raw.githubusercontent.com/hafizmuddassir96-wq/AdvanceTyper/main/main.lua"
@@ -710,6 +709,11 @@ showSettingsDialog = function()
   updateModelsBtn.setText("UPDATE MODEL")
   mainLayout.addView(updateModelsBtn)
 
+  local checkUpdateBtn = Button(service)
+  checkUpdateBtn.setText("Check for Updates")
+  checkUpdateBtn.setOnClickListener(function() checkUpdate(true) end)
+  mainLayout.addView(checkUpdateBtn)
+
   local modelSpinner = Spinner(service)
   local savedModelsStr = aiPrefs.getString("saved_models_list", "")
   local availableModels = {}
@@ -753,7 +757,7 @@ showSettingsDialog = function()
   })
 
   local styleLabel = TextView(service)
-  styleLabel.setText("Typing Mode (ٹائپنگ موڈ)")
+  styleLabel.setText("Typing Mode")
   styleLabel.setTextSize(16)
   styleLabel.setPadding(0, 10, 0, 5)
   mainLayout.addView(styleLabel)
@@ -814,6 +818,12 @@ showSettingsDialog = function()
     end,
     onNothingSelected = function() end
   })
+
+  local langLabel = TextView(service)
+  langLabel.setText("Select Language for Voice Typing")
+  langLabel.setTextSize(16)
+  langLabel.setPadding(0, 10, 0, 5)
+  mainLayout.addView(langLabel)
 
   local langSpinner = Spinner(service)
   local langAdapter = ArrayAdapter(service, android.R.layout.simple_spinner_item, {"Manual Select", "Urdu (Pakistan)", "English (US)", "Hindi (India)", "Punjabi (Pakistan)", "Arabic"})
@@ -1204,7 +1214,6 @@ showMyDialog = function()
     { Button; text = "Dictionary"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showDictionarySettings() end; };
     { Button; text = "View Dictionary"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showViewDictionaryDialog() end; };
     { Button; text = "Settings"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showSettingsDialog() end; };
-    { Button; text = "Check for Updates"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() checkUpdate(true) end; };
     { Button; text = "Send Feedback to Developer"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function()
         local intent = Intent(Intent.ACTION_VIEW)
         intent.setData(Uri.parse("https://wa.me/923044552704"))
