@@ -20,12 +20,13 @@ import "android.view.accessibility.AccessibilityNodeInfo"
 import "java.io.*"
 
 -- Auto Update Configuration
-local CURRENT_VERSION = "1.2"
+local CURRENT_VERSION = "1.3"
 local VERSION_URL = "https://raw.githubusercontent.com/hafizmuddassir96-wq/AdvanceTyper/main/werjan.txt"
 local UPDATE_CODE_URL = "https://raw.githubusercontent.com/hafizmuddassir96-wq/AdvanceTyper/main/main.lua"
 local PLUGIN_PATH = "/storage/emulated/0/解说/Plugins/Advance Typer/main.lua"
 local updateInProgress = false
 local mainHandler = Handler(Looper.getMainLooper())
+local Runnable = luajava.bindClass("java.lang.Runnable")
 
 local active_dialogs = {}
 
@@ -116,6 +117,7 @@ local function performUpdate(mainCode, onlineVersion)
             updateInProgress = false
             mainHandler.post(Runnable({
                 run = function()
+                    service.speak("Plugin successfully updated to version " .. onlineVersion .. ". Plugin will restart automatically.")
                     local successDialog = LuaDialog()
                     successDialog.setTitle("Update Successful")
                     successDialog.setMessage("Plugin successfully updated to version " .. onlineVersion .. ".\n\nPlugin will restart automatically.")
@@ -147,15 +149,24 @@ local function performUpdate(mainCode, onlineVersion)
         end
     end
     
-    local updateThread = Thread(luajava.bindClass("java.lang.Runnable"){
+    local updateThread = Thread(Runnable{
         run = updateProcess
     })
     updateThread.start()
 end
 
-local function checkUpdate()
+local function checkUpdate(isManual)
     if updateInProgress then
         return
+    end
+    
+    if isManual then
+        mainHandler.post(Runnable({
+            run = function()
+                Toast.makeText(service, "Checking for updates...", Toast.LENGTH_SHORT).show()
+                service.speak("Checking for updates")
+            end
+        }))
     end
     
     local timestamp = tostring(os.time())
@@ -167,6 +178,7 @@ local function checkUpdate()
                     if code2 == 200 and mainCode and trim(mainCode) ~= "" then
                         mainHandler.post(Runnable({
                             run = function()
+                                service.speak("A new version " .. onlineVersion .. " is available. Would you like to update now?")
                                 local updateAlertDlg = LuaDialog()
                                 updateAlertDlg.setTitle("Update Available!")
                                 updateAlertDlg.setMessage("A new version (" .. onlineVersion .. ") is available.\nCurrent version: " .. CURRENT_VERSION .. "\n\nWould you like to update now?")
@@ -180,8 +192,35 @@ local function checkUpdate()
                                 updateAlertDlg.show()
                             end
                         }))
+                    else
+                        if isManual then
+                            mainHandler.post(Runnable({
+                                run = function()
+                                    Toast.makeText(service, "Failed to download update code.", Toast.LENGTH_SHORT).show()
+                                    service.speak("Failed to download update code")
+                                end
+                            }))
+                        end
                     end
                 end)
+            else
+                if isManual then
+                    mainHandler.post(Runnable({
+                        run = function()
+                            Toast.makeText(service, "You are using the latest version (" .. CURRENT_VERSION .. ").", Toast.LENGTH_SHORT).show()
+                            service.speak("You are using the latest version")
+                        end
+                    }))
+                end
+            end
+        else
+            if isManual then
+                mainHandler.post(Runnable({
+                    run = function()
+                        Toast.makeText(service, "Failed to check for updates. Check internet connection.", Toast.LENGTH_SHORT).show()
+                        service.speak("Failed to check for updates")
+                    end
+                }))
             end
         end
     end)
@@ -352,9 +391,11 @@ local function saveAIText(text)
 end
 
 local function speakDelayed(text)
-  Handler(Looper.getMainLooper()).postDelayed(function()
-    service.speak(text)
-  end, 600)
+  Handler(Looper.getMainLooper()).postDelayed(Runnable{
+    run = function()
+      service.speak(text)
+    end
+  }, 600)
 end
 
 local function callGeminiAPI(apiKey, modelName, userPrompt, systemInstruction, callback, hasFallenBack)
@@ -400,9 +441,11 @@ local function callGeminiAPI(apiKey, modelName, userPrompt, systemInstruction, c
         fallbackModel = "gemini-1.5-flash"
       end
       Toast.makeText(service, "Model busy (429), trying backup model...", Toast.LENGTH_SHORT).show()
-      Handler(Looper.getMainLooper()).postDelayed(function()
-        callGeminiAPI(apiKey, fallbackModel, userPrompt, systemInstruction, callback, true)
-      end, 1000)
+      Handler(Looper.getMainLooper()).postDelayed(Runnable{
+        run = function()
+          callGeminiAPI(apiKey, fallbackModel, userPrompt, systemInstruction, callback, true)
+        end
+      }, 1000)
     else
       local errorMsg = "AI Error (" .. tostring(status) .. "). Using raw text."
       if status == 429 then
@@ -1136,9 +1179,11 @@ local function showDictionarySettings()
       
       Toast.makeText(service, "Added Successfully", Toast.LENGTH_SHORT).show()
       
-      Handler(Looper.getMainLooper()).postDelayed(function()
-        service.speak("Added Successfully")
-      end, 1000)
+      Handler(Looper.getMainLooper()).postDelayed(Runnable{
+        run = function()
+          service.speak("Added Successfully")
+        end
+      }, 1000)
       
       unregisterDialog(dlg)
       dlg.dismiss()
@@ -1152,14 +1197,14 @@ end
 showMyDialog = function()
   local dlg = LuaDialog()
   registerDialog(dlg)
-  dlg.setTitle("Advance Typer")
+  dlg.setTitle("Advance Typer v" .. CURRENT_VERSION)
   local layout = { LinearLayout; orientation = "vertical"; padding = "30dp";
     { TextView; text = "Developer: Hafiz Muddassir Safi"; textSize = "16sp"; layout_marginBottom="10dp"; gravity = "center"; };
     { Button; text = "AI Texts"; textSize = "16sp"; onClick = function() showAITextsDialog() end; };
     { Button; text = "Dictionary"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showDictionarySettings() end; };
     { Button; text = "View Dictionary"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showViewDictionaryDialog() end; };
     { Button; text = "Settings"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() showSettingsDialog() end; };
-    { Button; text = "Check for Updates"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() checkUpdate() end; };
+    { Button; text = "Check for Updates"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function() checkUpdate(true) end; };
     { Button; text = "Send Feedback to Developer"; textSize = "16sp"; layout_marginTop="10dp"; onClick = function()
         local intent = Intent(Intent.ACTION_VIEW)
         intent.setData(Uri.parse("https://wa.me/923044552704"))
@@ -1361,14 +1406,16 @@ local function showQuickMenu()
         tDlg.dismiss()
         if currentText ~= "" then
           speakDelayed("Translating, please wait")
-          Handler(Looper.getMainLooper()).postDelayed(function()
-            processWithAI(currentText, "en-US", transLangs[p2+1], function(res)
-              if res then
-                setTextBack(res)
-                service.speak("Translated successfully")
-              end
-            end)
-          end, 1000)
+          Handler(Looper.getMainLooper()).postDelayed(Runnable{
+            run = function()
+              processWithAI(currentText, "en-US", transLangs[p2+1], function(res)
+                if res then
+                  setTextBack(res)
+                  service.speak("Translated successfully")
+                end
+              end)
+            end
+          }, 1000)
         else
           Toast.makeText(service, "No text found in edit box!", Toast.LENGTH_SHORT).show()
         end
@@ -1380,18 +1427,20 @@ local function showQuickMenu()
       if currentText ~= "" then
         speakDelayed("Processing text, please wait")
         
-        Handler(Looper.getMainLooper()).postDelayed(function()
-          local apiKey = getGeminiApiKey()
-          local modelName = getSelectedModel()
-          local prompt = "Fix all grammar, spelling, punctuation, and flow of this text while keeping the exact meaning intact. Return ONLY the polished text: " .. currentText
-          callGeminiAPI(apiKey, modelName, prompt, "You are a professional grammar and text editor.", function(res)
-            if res then
-              saveAIText(res)
-              setTextBack(res)
-              service.speak("Text processed successfully")
-            end
-          end)
-        end, 1000)
+        Handler(Looper.getMainLooper()).postDelayed(Runnable{
+          run = function()
+            local apiKey = getGeminiApiKey()
+            local modelName = getSelectedModel()
+            local prompt = "Fix all grammar, spelling, punctuation, and flow of this text while keeping the exact meaning intact. Return ONLY the polished text: " .. currentText
+            callGeminiAPI(apiKey, modelName, prompt, "You are a professional grammar and text editor.", function(res)
+              if res then
+                saveAIText(res)
+                setTextBack(res)
+                service.speak("Text processed successfully")
+              end
+            end)
+          end
+        }, 1000)
       else
         Toast.makeText(service, "No text found in edit box!", Toast.LENGTH_SHORT).show()
       end
@@ -1400,18 +1449,20 @@ local function showQuickMenu()
       if currentText ~= "" then
         speakDelayed("Summarizing text, please wait")
         
-        Handler(Looper.getMainLooper()).postDelayed(function()
-          local apiKey = getGeminiApiKey()
-          local modelName = getSelectedModel()
-          local prompt = "Provide a clear, concise, and comprehensive summary of the following text. CRITICAL RULE: Automatically detect the exact language of the input text, and write the summary in that exact same language (if the input text is in Urdu, write the summary in Urdu; if in English, write in English; if in Hindi, write in Hindi; strictly match whatever language the input text is in): " .. currentText
-          callGeminiAPI(apiKey, modelName, prompt, "You are an expert summarizer. You must strictly output the summary in the exact same language as the input text.", function(res)
-            if res then
-              saveAIText(res)
-              setTextBack(res)
-              service.speak("Summary generated successfully")
-            end
-          end)
-        end, 1000)
+        Handler(Looper.getMainLooper()).postDelayed(Runnable{
+          run = function()
+            local apiKey = getGeminiApiKey()
+            local modelName = getSelectedModel()
+            local prompt = "Provide a clear, concise, and comprehensive summary of the following text. CRITICAL RULE: Automatically detect the exact language of the input text, and write the summary in that exact same language (if the input text is in Urdu, write the summary in Urdu; if in English, write in English; if in Hindi, write in Hindi; strictly match whatever language the input text is in): " .. currentText
+            callGeminiAPI(apiKey, modelName, prompt, "You are an expert summarizer. You must strictly output the summary in the exact same language as the input text.", function(res)
+              if res then
+                saveAIText(res)
+                setTextBack(res)
+                service.speak("Summary generated successfully")
+              end
+            end)
+          end
+        }, 1000)
       else
         Toast.makeText(service, "No text found in edit box!", Toast.LENGTH_SHORT).show()
       end
@@ -1420,18 +1471,20 @@ local function showQuickMenu()
       if currentText ~= "" then
         speakDelayed("Writing poetry, please wait")
         
-        Handler(Looper.getMainLooper()).postDelayed(function()
-          local apiKey = getGeminiApiKey()
-          local modelName = getSelectedModel()
-          local prompt = "Convert the following thoughts or text into a beautiful, engaging, and artistic poetic/shairi format while keeping the core message. Return ONLY the poetry text. Do NOT include any conversational intro, greetings, comments, or notes: " .. currentText
-          callGeminiAPI(apiKey, modelName, prompt, "You are an expert poet and shairi writer. Return ONLY the raw poetry text with no conversational filler, comments, or intro.", function(res)
-            if res then
-              saveAIText(res)
-              setTextBack(res)
-              service.speak("Poetry generated successfully")
-            end
-          end)
-        end, 1000)
+        Handler(Looper.getMainLooper()).postDelayed(Runnable{
+          run = function()
+            local apiKey = getGeminiApiKey()
+            local modelName = getSelectedModel()
+            local prompt = "Convert the following thoughts or text into a beautiful, engaging, and artistic poetic/shairi format while keeping the core message. Return ONLY the poetry text. Do NOT include any conversational intro, greetings, comments, or notes: " .. currentText
+            callGeminiAPI(apiKey, modelName, prompt, "You are an expert poet and shairi writer. Return ONLY the raw poetry text with no conversational filler, comments, or intro.", function(res)
+              if res then
+                saveAIText(res)
+                setTextBack(res)
+                service.speak("Poetry generated successfully")
+              end
+            end)
+          end
+        }, 1000)
       else
         Toast.makeText(service, "No text found in edit box!", Toast.LENGTH_SHORT).show()
       end
@@ -1440,24 +1493,26 @@ local function showQuickMenu()
       if currentText ~= "" then
         speakDelayed("Converting Roman text, please wait")
         
-        Handler(Looper.getMainLooper()).postDelayed(function()
-          local apiKey = getGeminiApiKey()
-          local modelName = getSelectedModel()
-          local universalRomanPrompt = [[Analyze the input Roman/transliterated text carefully to determine its intended target language (English, Urdu, Hindi, Punjabi, Arabic, etc.).
+        Handler(Looper.getMainLooper()).postDelayed(Runnable{
+          run = function()
+            local apiKey = getGeminiApiKey()
+            local modelName = getSelectedModel()
+            local universalRomanPrompt = [[Analyze the input Roman/transliterated text carefully to determine its intended target language (English, Urdu, Hindi, Punjabi, Arabic, etc.).
 Convert it accurately into proper, clean, grammatically correct script of that intended language.
 Examples:
 - If Roman Urdu ("Kaise ho"), convert to Urdu script ("کیسے ہو").
 - If Roman/Urdu-written English ("ہو ار یو" or "how are you"), convert to proper English script ("How are you").
 - If Roman Hindi/Punjabi/Arabic, convert to their respective proper native scripts.
 Output ONLY the final clean converted text without any extra notes, explanations, or greetings.]]
-          callGeminiAPI(apiKey, modelName, currentText, universalRomanPrompt, function(res)
-            if res then
-              saveAIText(res)
-              setTextBack(res)
-              service.speak("Text converted successfully")
-            end
-          end)
-        end, 1000)
+            callGeminiAPI(apiKey, modelName, currentText, universalRomanPrompt, function(res)
+              if res then
+                saveAIText(res)
+                setTextBack(res)
+                service.speak("Text converted successfully")
+              end
+            end)
+          end
+        }, 1000)
       else
         Toast.makeText(service, "No text found in edit box!", Toast.LENGTH_SHORT).show()
       end
@@ -1466,22 +1521,24 @@ Output ONLY the final clean converted text without any extra notes, explanations
       if currentText ~= "" then
         speakDelayed("Extracting data, please wait")
         
-        Handler(Looper.getMainLooper()).postDelayed(function()
-          local apiKey = getGeminiApiKey()
-          local modelName = getSelectedModel()
-          local otpStructuredPrompt = [[Extract any link, email address, OTP, verification code, or phone number from the given text.
+        Handler(Looper.getMainLooper()).postDelayed(Runnable{
+          run = function()
+            local apiKey = getGeminiApiKey()
+            local modelName = getSelectedModel()
+            local otpStructuredPrompt = [[Extract any link, email address, OTP, verification code, or phone number from the given text.
 CRITICAL RULES:
 1. Return ONLY the raw, clean extracted data value (such as the email address, link, OTP digits, or phone number).
 2. Strictly DO NOT include any headings, labels, explanations, intros, extra announcements, or placeholder texts.
 3. If multiple values are found, output them cleanly separated. Return pure data only with no extra text.]]
-          callGeminiAPI(apiKey, modelName, currentText, otpStructuredPrompt, function(res)
-            if res then
-              saveAIText(res)
-              setTextBack(res)
-              service.speak("Data extracted successfully")
-            end
-          end)
-        end, 1000)
+            callGeminiAPI(apiKey, modelName, currentText, otpStructuredPrompt, function(res)
+              if res then
+                saveAIText(res)
+                setTextBack(res)
+                service.speak("Data extracted successfully")
+              end
+            end)
+          end
+        }, 1000)
       else
         Toast.makeText(service, "No text found in edit box!", Toast.LENGTH_SHORT).show()
       end
@@ -1546,7 +1603,7 @@ local function chooseLanguage()
       tDlg.setView(tList)
       tDlg.show()
     else
-      startVoiceTagging(codes[pos+1], nil)
+      startVoiceTyping(codes[pos+1], nil)
     end
   end)
   
@@ -1554,8 +1611,7 @@ local function chooseLanguage()
   dlg.show()
 end
 
--- 💡 یہاں ایکسٹینشن کھلتے ہی خود بخود اپڈیٹ چیک کرنے کا فنکشن لگا دیا گیا ہے
-checkUpdate()
+checkUpdate(false)
 
 local hasEditField = (editText ~= nil) or (global_node and (global_node.isEditable() or global_node.getClassName() == "android.widget.EditText"))
 
