@@ -1,0 +1,19 @@
+Advance Typer - What's New
+
+* Translation Spinner:
+Added a dedicated Translation Dropdown menu (Off, Manual Select, Urdu, English, Hindi, Punjabi, Arabic) to easily select or prompt translation targets.
+
+* Sentence Ending Symbol:
+Added a new setting to control ending symbols for finished sentences (Auto/Native Period, Space, Period/Full Stop, or New Line).
+
+* Clean UI:
+Cleaned up descriptions in Settings for a simple, clear, and readable user interface.
+
+* Smart Structure & Spacing:
+Enhanced AI prompts for long dictations with intelligent word spacing, sentence boundaries, and native language punctuation formatting.
+
+* Voice Typing Labels:
+Added explicit "Select Language for Voice Typing" label above the language selection spinner.
+
+* Language Rules Preserved:
+Reinforced strict grammar, spacing, and punctuation rules across Urdu, English, Hindi, Punjabi (Shahmukhi), and Arabic (with Zero-Emoji rule and proper Tashkeel).
